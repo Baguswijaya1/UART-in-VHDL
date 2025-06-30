@@ -2,86 +2,63 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity uart_loopback_tb is
-end uart_loopback_tb;
+entity uart is
+  Port (
+    clk      : in  std_logic;      -- System clock
+    rst      : in  std_logic;      -- Reset
+    rx_in    : in  std_logic;      -- UART RX from PC
+    tx_out   : out std_logic       -- UART TX to PC
+  );
+end uart;
 
-architecture Behavioral of uart_loopback_tb is
+architecture Behavioral of uart is
 
-    -- Constants
-    constant CLK_PERIOD : time := 20 ns; -- 50 MHz clock
-
-    -- Signals
-    signal clk       : std_logic := '0';
-    signal reset     : std_logic := '1';
-
-    signal tx_start  : std_logic := '0';
-    signal tx_data   : std_logic_vector(7 downto 0) := x"00";
-    signal tx_busy   : std_logic;
-    signal tx_line   : std_logic;
-
-    signal rx_line   : std_logic;
-    signal rx_data   : std_logic_vector(7 downto 0);
-    signal rx_ready  : std_logic;
+  -- Signals
+  signal rx_data   : std_logic_vector(7 downto 0);
+  signal rx_valid  : std_logic;
+  signal tx_data   : std_logic_vector(7 downto 0);
+  signal tx_start  : std_logic := '0';
+  signal tx_busy   : std_logic;
 
 begin
 
-    -- Clock process
-    clk_process : process
-    begin
-        clk <= '0';
-        wait for CLK_PERIOD / 2;
-        clk <= '1';
-        wait for CLK_PERIOD / 2;
-    end process;
+  -- UART Receiver
+  uart_rx_inst : entity work.uart_rx
+    port map (
+      clk        => clk,
+      rst        => rst,
+      rx         => rx_in,
+      data_out   => rx_data,
+      data_valid => rx_valid
+    );
 
-    -- Connect tx -> rx
-    rx_line <= tx_line;
+  -- UART Transmitter
+  uart_tx_inst : entity work.uart_tx
+    port map (
+      clk       => clk,
+      reset     => rst,
+      data_in   => tx_data,
+      start_tx  => tx_start,
+      tx        => tx_out,
+      busy      => tx_busy
+    );
 
-    -- Instantiate TX
-    uart_tx_inst : entity work.uart_tx
-        port map (
-            clk      => clk,
-            reset    => reset,
-            data_in  => tx_data,
-            start_tx => tx_start,
-            tx       => tx_line,
-            busy     => tx_busy
-        );
-
-    -- Instantiate RX
-    uart_rx_inst : entity work.uart_rx
-        port map (
-            clk        => clk,
-            reset      => reset,
-            rx         => rx_line,
-            data_out   => rx_data,
-            data_ready => rx_ready
-        );
-
-    -- Stimulus
-    stimulus : process
-    begin
-        wait for 100 ns;
-        reset <= '0';
-
-        -- Wait some cycles
-        wait for 1000 ns;
-
-        -- Send a byte
-        tx_data  <= x"5A";      -- Example: 0b01011010
-        tx_start <= '1';
-        wait for CLK_PERIOD;
+  -- Echo logic: when RX is valid and TX is ready
+  process(clk)
+  begin
+    if rising_edge(clk) then
+      if rst = '1' then
         tx_start <= '0';
-
-        -- Wait until transmission + reception done
-        wait until rx_ready = '1';
-
-        wait for 1000 ns;
-
-        assert rx_data = x"5A"
-            report "UART loopback failed!" severity error;
-
-        wait;
-    end process;
+        tx_data  <= (others => '0');
+      else
+        if rx_valid = '1' and tx_busy = '0' then
+          tx_data  <= rx_data;
+          tx_start <= '1';
+        else
+          tx_start <= '0';
+        end if;
+      end if;
+    end if;
+  end process;
 
 end Behavioral;

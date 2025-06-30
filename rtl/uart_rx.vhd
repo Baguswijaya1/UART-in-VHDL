@@ -42,7 +42,7 @@ begin
 
     -- UART Receiver process
     process(clk, rst)
-    begin
+	begin
         if rst = '1' then
             state       <= IDLE;
             bit_cnt     <= 0;
@@ -56,7 +56,7 @@ begin
             case state is
                 when IDLE =>
                     if rx_sync(1) = '0' then -- Detected start bit
-                        clk_cnt <= SAMPLE_TICKS / 2; -- Middle of start bit
+						clk_cnt <= SAMPLE_TICKS / 2; -- Middle of start bit
                         state   <= START;
                     end if;
 
@@ -109,3 +109,4 @@ begin
     end process;
 
 end Behavioral;
+ 

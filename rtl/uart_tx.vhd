@@ -1,3 +1,4 @@
+-- uart_tx.vhd
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -27,6 +28,22 @@ architecture Behavioral of uart_tx is
     signal tx_shift    : std_logic_vector(7 downto 0);
     signal tx_bit      : std_logic := '1';
     signal parity_bit  : std_logic := '0';
+	
+	-- Fun	action to compute even parity
+    function even_parity(data : std_logic_vector(7 downto 0)) return std_logic is
+        variable ones : integer := 0;
+    begin
+        for i in data'range loop
+            if data(i) = '1' then
+                ones := ones + 1;
+            end if;
+        end loop;
+        if (ones mod 2) = 0 then
+            return '0'; -- Even number of ones, parity bit = 0
+        else
+            return '1'; -- Odd number of ones, parity bit = 1
+        end if;
+    end function;
 
 begin
     tx <= tx_bit;
@@ -94,21 +111,5 @@ begin
             end case;
         end if;
     end process;
-
-    -- Function to compute even parity
-    function even_parity(data : std_logic_vector(7 downto 0)) return std_logic is
-        variable ones : integer := 0;
-    begin
-        for i in data'range loop
-            if data(i) = '1' then
-                ones := ones + 1;
-            end if;
-        end loop;
-        if (ones mod 2) = 0 then
-            return '0'; -- Even number of ones, parity bit = 0
-        else
-            return '1'; -- Odd number of ones, parity bit = 1
-        end if;
-    end function;
     
 end Behavioral;
